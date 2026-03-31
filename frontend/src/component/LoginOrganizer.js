@@ -1,5 +1,4 @@
 import React, { useEffect, useState } from 'react';
-// import { createRoot } from 'react-dom/client';
 import organizerLoginImg from '../images/organizerLogin.jpg';
 import { Link, useNavigate } from 'react-router-dom';
 import { resetMessage } from '../store/organizerSlice.js';
@@ -30,12 +29,19 @@ function LoginOrganizer() {
         });
     };
 
-    const handleSubmit = (event) => {
-        event.preventDefault();
-        dispatch(organizerLoginThunk(organizerData));
-        navigate('/organizerHome');
-        event.target.reset();
-    };
+     const handleSubmit = async (event) => {
+  event.preventDefault();
+
+  const result = await dispatch(organizerLoginThunk(organizerData));
+
+  if (organizerLoginThunk.fulfilled.match(result)) {
+    navigate('/organizerHome');
+  } else {
+    alert(result.payload);
+  }
+
+  event.target.reset();
+};
 
     return (
       <div className="auth-container">

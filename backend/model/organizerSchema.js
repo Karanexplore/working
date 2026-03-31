@@ -49,7 +49,7 @@ const organizerSchema = new mongoose.Schema(
 
     organizerLogo: {
       type: String,
-      required: true
+      default:""
     },
 
     status: {
@@ -62,9 +62,26 @@ const organizerSchema = new mongoose.Schema(
       default: false
     },
 
-    adminVerified: {
-      type: Boolean,
-      default: false
+    otp: {
+      type: String,
+      default: null
+    },
+
+    otpExpiry: {
+      type: Date,
+      default: null
+    },
+
+    /* 🔥 PRODUCTION READY ACCOUNT STATUS */
+    accountStatus: {
+      type: String,
+      enum: ["pending", "approved", "rejected", "suspended"],
+      default: "pending"
+    },
+
+    rejectionReason: {
+      type: String,
+      default: ""
     },
 
     registeredDate: {

@@ -1,129 +1,104 @@
-import React, { useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import participantImg from '../images/participantLogin.jpg';
-import { registerTournamentThunk } from '../store/participantSlice';
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import participantImg from "../images/participantLogin.jpg";
+import { setNavShow } from "../store/commonSlice";
 
 function ParticipantRegisterTournament() {
+  const participantObj = useSelector((state) => state.participant);
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
-    const participantObj = useSelector(state => state.participant);
-    const [tournamentObj, setTournamentObj] = useState({});
-    const dispatch = useDispatch();
-    const navigate = useNavigate();
+  useEffect(() => {
+    dispatch(setNavShow("participant"));
+  }, [dispatch]);
 
-    const getData = (event) => {
-        let { name, value } = event.target;
+  useEffect(() => {
+    if (!participantObj.loggedInEmail) {
+      navigate("/participantLogin");
+    }
+  }, [participantObj.loggedInEmail, navigate]);
 
-        if (event.target.type === "file") {
-            value = event.target.files[0];
-        }
+  return (
+    <div
+      style={{
+        display: "flex",
+        gap: "40px",
+        padding: "40px",
+        alignItems: "center",
+        justifyContent: "center",
+        flexWrap: "wrap"
+      }}
+    >
+      {/* LEFT */}
+      <div
+        style={{
+          flex: 1,
+          minWidth: "300px",
+          textAlign: "center"
+        }}
+      >
+        <h2>Welcome {participantObj.loggedInEmail}</h2>
+        <img
+          src={participantImg}
+          alt="Participant"
+          style={{
+            width: "100%",
+            maxWidth: "400px",
+            borderRadius: "12px",
+            boxShadow: "0 4px 12px rgba(0,0,0,0.15)"
+          }}
+        />
+      </div>
 
-        setTournamentObj({
-            ...tournamentObj,
-            [name]: value
-        });
-    };
+      {/* RIGHT */}
+      <div
+        style={{
+          flex: 1,
+          minWidth: "300px",
+          backgroundColor: "#f8f9fa",
+          padding: "30px",
+          borderRadius: "12px",
+          boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+        }}
+      >
+        <h2 style={{ marginBottom: "20px" }}>Tournament Registration Info</h2>
 
-    const handleSubmit = (event) => {
-        event.preventDefault();
+        <p style={{ fontSize: "16px", lineHeight: "1.7" }}>
+          Participants cannot create tournaments directly.
+          <br />
+          <br />
+          Only <strong>Organizers</strong> can create tournaments.
+          <br />
+          <br />
+          To join a tournament:
+        </p>
 
-        const formData = new FormData();
-        for (let key in tournamentObj) {
-            if (tournamentObj[key]) {
-                formData.append(key, tournamentObj[key]);
-            }
-        }
+        <ul style={{ lineHeight: "2", marginTop: "10px" }}>
+          <li>Go to <strong>Explore Events</strong></li>
+          <li>View available tournaments</li>
+          <li>Click on <strong>Register</strong></li>
+          <li>Your event will appear in <strong>My Registrations</strong></li>
+        </ul>
 
-        formData.append("participantEmailId", participantObj.loggedInEmail);
-
-        dispatch(registerTournamentThunk(formData));
-        navigate("/participantHome");
-        event.target.reset();
-    };
-
-    return (
-        <div>
-            <div id="participantLeft">
-                <h2>Welcome {participantObj.loggedInEmail}</h2>
-                <img src={participantImg} id="participantLogin" alt="Participant" />
-            </div>
-
-            <div id="participantRight">
-                <h2>Register Tournament</h2>
-                <br />
-
-                <form onSubmit={handleSubmit} encType="multipart/form-data">
-
-                    <input
-                        type="text"
-                        placeholder="Enter Tournament Name"
-                        name="tournamentName"
-                        onChange={getData}
-                    /><br />
-
-                    <input
-                        type="text"
-                        placeholder="Enter Venue / Platform"
-                        name="venue"
-                        onChange={getData}
-                    /><br />
-
-                    <input
-                        type="text"
-                        placeholder="Enter Contact Number"
-                        name="contact"
-                        onChange={getData}
-                    /><br />
-
-                    <textarea
-                        placeholder="Enter Game Details / Rules"
-                        name="gameDetails"
-                        onChange={getData}
-                    ></textarea><br />
-
-                    <input
-                        type="number"
-                        placeholder="Enter Total Slots"
-                        name="totalSlots"
-                        min={1}
-                        onChange={getData}
-                    /><br />
-
-                    <input
-                        type="date"
-                        name="tournamentDate"
-                        onChange={getData}
-                    /><br />
-
-                    <input
-                        type="text"
-                        placeholder="Enter Tournament Time"
-                        name="tournamentTime"
-                        onChange={getData}
-                    /><br />
-
-                    <select name="gameCategory" onChange={getData}>
-                        <option value="">Select Game Category</option>
-                        <option value="Cricket">Cricket</option>
-                        <option value="Football">Football</option>
-                        <option value="BGMI">BGMI</option>
-                        <option value="Valorant">Valorant</option>
-                        <option value="CSGO">CSGO</option>
-                    </select><br />
-
-                    <input
-                        type="file"
-                        name="tournamentBanner"
-                        onChange={getData}
-                    /><br /><br />
-
-                    <input type="submit" value="Register Tournament" /><br />
-                    <input type="reset" value="Reset" />
-
-                </form>
-            </div>
-        </div>
-    );
+        <button
+          onClick={() => navigate("/registerTournament")}
+          style={{
+            marginTop: "20px",
+            backgroundColor: "#0b1b44",
+            color: "white",
+            border: "none",
+            padding: "12px 20px",
+            borderRadius: "8px",
+            cursor: "pointer",
+            fontSize: "16px"
+          }}
+        >
+          Go to Explore Events
+        </button>
+      </div>
+    </div>
+  );
 }
 
 export default ParticipantRegisterTournament;

@@ -1,125 +1,122 @@
-import React, { useEffect } from 'react';
-// import { createRoot } from 'react-dom/client';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { setNavShow } from '../store/commonSlice.js';
-import {
-    organizerTournamentListThunk,
-    organizerAcceptTournamentThunk
-} from '../store/organizerSlice.js';
-import { tournamentImagePath } from '../utils.js';
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+// import { useNavigate } from "react-router-dom";
+import { setNavShow } from "../store/commonSlice.js";
+import { organizerTournamentListThunk } from "../store/organizerSlice.js";
 
 function TournamentList() {
 
-    const organizerObj = useSelector(state => state.organizer);
-    const navigate = useNavigate();
-    const dispatch = useDispatch();
+  const organizerObj = useSelector(state => state.organizer);
+  // const navigate = useNavigate();
+  const dispatch = useDispatch();
 
-    if (organizerObj.status === 500 || organizerObj.status === undefined)
-        navigate("/organizerLogin");
+  useEffect(() => {
+    dispatch(setNavShow("organizer"));
+    dispatch(organizerTournamentListThunk());
+  }, [dispatch]);
 
-    useEffect(() => {
-        dispatch(setNavShow("organizer"));
-        dispatch(organizerTournamentListThunk());
-    }, []);
+  return (
+    <div style={{ padding: "20px" }}>
 
-    const handleSubmit = (tournamentId) => {
-        const obj = {
-            tournamentId,
-            organizerEmail: organizerObj.loggedInEmail
-        };
-        dispatch(organizerAcceptTournamentThunk(obj));
-    };
+      <h2>PulseArena - Organizer Dashboard</h2>
+      <h4>Welcome {organizerObj.loggedInEmail}</h4>
 
-    return (
-        <div>
-            <br />
-            <blockquote>
-                <br />
-                <h2>Welcome {organizerObj.loggedInEmail}</h2>
-                <br />
-                <h2>{organizerObj.message}</h2>
+      {organizerObj.tournamentArray.length > 0 ? (
 
-                {organizerObj.tournamentArray.length !== 0 ?
-                    <div>
-                        <h2>Tournament List</h2>
-                        <br />
+        <table border={1} cellPadding={6} cellSpacing={0} width="100%">
+          <thead style={{ backgroundColor: "#111", color: "white" }}>
+            <tr>
+              <th>S.No</th>
+              <th>Event</th>
+              <th>Type</th>
+              <th>Category</th>
+              <th>Venue</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Registrations</th>
+              <th>Status</th>
+              <th>Poster</th>
+              <th>Created</th>
+            </tr>
+          </thead>
 
-                        <table
-                            style={{ fontSize: "14px" }}
-                            border={1}
-                            cellPadding={5}
-                            cellSpacing={0}
-                        >
-                            <tr>
-                                <th>S.No</th>
-                                <th>Tournament ID</th>
-                                <th>Creator</th>
-                                <th>Tournament Name</th>
-                                <th>Contact</th>
-                                <th>Venue / Platform</th>
-                                <th>Game Details</th>
-                                <th>Total Slots</th>
-                                <th>Date</th>
-                                <th>Time</th>
-                                <th>Game Category</th>
-                                <th>Banner</th>
-                                <th>Posted At</th>
-                                <th>Status</th>
-                            </tr>
+          <tbody>
+            {organizerObj.tournamentArray.map((obj, index) => {
 
-                            {organizerObj.tournamentArray.map((obj, index) => {
-                                return (
-                                    <tr key={index}>
-                                        <td>{index + 1}</td>
-                                        <td>{obj.tournamentId}</td>
-                                        <td>{obj.userId}</td>
-                                        <td>{obj.tournamentName}</td>
-                                        <td>{obj.contact}</td>
-                                        <td>{obj.venue}</td>
-                                        <td>{obj.gameDetails}</td>
-                                        <td>{obj.totalSlots}</td>
-                                        <td>{obj.tournamentDate}</td>
-                                        <td>{obj.tournamentTime}</td>
-                                        <td>{obj.gameCategory}</td>
-                                        <td>
-                                            <img
-                                                src={tournamentImagePath + `/${obj.tournamentBanner}`}
-                                                height="70"
-                                                width="70"
-                                                alt="tournamentBanner"
-                                            />
-                                        </td>
-                                        <td>{obj.createdAt}</td>
-                                        <td>
-                                            {obj.organizerId === "" ?
-                                                <form
-                                                    onSubmit={() => {
-                                                        handleSubmit(obj.tournamentId);
-                                                    }}
-                                                >
-                                                    <button
-                                                        style={{
-                                                            padding: "5px",
-                                                            backgroundColor: "crimson",
-                                                            color: "white"
-                                                        }}
-                                                    >
-                                                        Activate
-                                                    </button>
-                                                </form>
-                                                : "Closed"}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </table>
-                    </div>
-                    : <div>Data Not Found</div>
-                }
-            </blockquote>
-        </div>
-    );
+              const registeredCount = obj.registrations?.length || 0;
+              const remainingSlots = obj.maxParticipants - registeredCount;
+
+              return (
+                <tr key={obj.tournamentId}>
+
+                  <td>{index + 1}</td>
+
+                  <td>
+                    <strong>{obj.tournamentName}</strong>
+                    <br />
+                    <small>{obj.description || "No description"}</small>
+                  </td>
+
+                  {/* Event Type Badge */}
+                  <td>
+                    <span style={{
+                      padding: "4px 8px",
+                      borderRadius: "5px",
+                      backgroundColor: "#6a0dad",
+                      color: "white",
+                      fontSize: "12px"
+                    }}>
+                      {obj.eventType || "sports"}
+                    </span>
+                  </td>
+
+                  <td>{obj.gameCategory}</td>
+                  <td>{obj.venue}</td>
+                  <td>{obj.tournamentDate}</td>
+                  <td>{obj.reportingTime}</td>
+
+                  <td>
+                    {registeredCount} / {obj.maxParticipants}
+                    <br />
+                    <small>{remainingSlots} slots left</small>
+                  </td>
+
+                  <td>
+                    {obj.registrationOpen ? (
+                      <span style={{ color: "green", fontWeight: "bold" }}>
+                        Open
+                      </span>
+                    ) : (
+                      <span style={{ color: "red", fontWeight: "bold" }}>
+                        Closed
+                      </span>
+                    )}
+                  </td>
+
+                  <td>
+                    <img
+                      src={obj.tournamentPoster}
+                      alt="poster"
+                      width="60"
+                      height="60"
+                      style={{ borderRadius: "6px" }}
+                    />
+                  </td>
+
+                  <td>{obj.createdAt}</td>
+
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+      ) : (
+        <h3>No events created yet</h3>
+      )}
+
+    </div>
+  );
 }
 
 export default TournamentList;

@@ -5,7 +5,10 @@ import dotenv from "dotenv";
 import {
   loginAdminController,
   adminViewOrganizerListController,
-  adminVerifyOrganizerController
+  approveOrganizerController,
+  rejectOrganizerController,
+  suspendOrganizerController,
+  adminTournamentListController
 } from "../controller/adminController.js";
 
 dotenv.config();
@@ -13,48 +16,87 @@ dotenv.config();
 const adminRouter = express.Router();
 const ADMIN_SECRET_KEY = process.env.ADMIN_SECRET;
 
-/* ================= JWT AUTH MIDDLEWARE ================= */
-const authenticateAdminJWT = (request, response, next) => {
+/* ================= JWT AUTH ================= */
+const authenticateAdminJWT = (req, res, next) => {
   try {
-    const token = request.query.adminTokenData;
+    const authHeader = req.headers.authorization;
 
-    if (!token) {
-      return response.status(401).send("Admin token missing");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        message: "Authorization header missing"
+      });
     }
 
-    jwt.verify(token, ADMIN_SECRET_KEY, (error, payload) => {
-      if (error) {
-        console.log("JWT verification failed:", error);
-        return response.status(403).send("Invalid or expired admin token");
+    const token = authHeader.split(" ")[1];
+
+    if (!token || token === "undefined" || token === "null") {
+      return res.status(401).json({
+        message: "Invalid token provided"
+      });
+    }
+
+    if (!ADMIN_SECRET_KEY) {
+      return res.status(500).json({
+        message: "ADMIN_SECRET missing in .env"
+      });
+    }
+
+    jwt.verify(token, ADMIN_SECRET_KEY, (err, payload) => {
+      if (err) {
+        return res.status(403).json({
+          message: "Invalid or expired admin token"
+        });
       }
 
-      request.adminPayload = payload;
+      req.adminPayload = payload;
       next();
     });
-
   } catch (error) {
-    console.log("Admin JWT authentication error:", error);
-    return response.status(500).send("Internal server error");
+    console.error("Admin JWT Error:", error.message);
+    return res.status(500).json({
+      message: "Server error"
+    });
   }
 };
 
-/* ================= ADMIN ROUTES ================= */
+/* ================= ROUTES ================= */
 
-// Admin Login
-adminRouter.post("/loginAdmin", loginAdminController);
+// Login
+adminRouter.post("/login", loginAdminController);
 
-// View Organizer List (Admin Only)
+// View all organizers
 adminRouter.get(
-  "/adminViewOrganizerList",
+  "/organizers",
   authenticateAdminJWT,
   adminViewOrganizerListController
 );
 
-// Verify Organizer (Admin Only)
-adminRouter.post(
-  "/adminVerifyOrganizer",
+// View all tournaments for dashboard
+adminRouter.get(
+  "/tournaments",
   authenticateAdminJWT,
-  adminVerifyOrganizerController
+  adminTournamentListController
+);
+
+// Approve by email
+adminRouter.put(
+  "/organizer/approve/:email",
+  authenticateAdminJWT,
+  approveOrganizerController
+);
+
+// Reject by email
+adminRouter.put(
+  "/organizer/reject/:email",
+  authenticateAdminJWT,
+  rejectOrganizerController
+);
+
+// Suspend by email
+adminRouter.put(
+  "/organizer/suspend/:email",
+  authenticateAdminJWT,
+  suspendOrganizerController
 );
 
 export default adminRouter;

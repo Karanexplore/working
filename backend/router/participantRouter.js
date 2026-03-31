@@ -6,63 +6,94 @@ import {
   addParticipantController,
   loginParticipantController,
   registerTournamentController,
-  participantRegistrationListController
+  participantRegistrationListController,
+  participantTournamentListController,
+  verifyParticipantOTPController
 } from "../controller/participantController.js";
-
 
 dotenv.config();
 
 const participantRouter = express.Router();
+
+/* ================= SECRET KEY ================= */
 const PARTICIPANT_SECRET_KEY = process.env.PARTICIPANT_SECRET;
 
 /* ================= JWT AUTH MIDDLEWARE ================= */
 const authenticateParticipantJWT = (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    const token = authHeader && authHeader.split(" ")[1];
 
-    if (!token) {
-      return res.status(401).send("Token missing");
+    // ✅ Header check
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        message: "Authorization token missing"
+      });
+    }
+
+    const token = authHeader.split(" ")[1];
+
+    // ✅ Token empty check
+    if (!token || token === "undefined" || token === "null") {
+      return res.status(401).json({
+        message: "Invalid token provided"
+      });
+    }
+
+    // ✅ Secret missing check
+    if (!PARTICIPANT_SECRET_KEY) {
+      console.error("❌ PARTICIPANT_SECRET not found in .env");
+      return res.status(500).json({
+        message: "Server configuration error"
+      });
     }
 
     jwt.verify(token, PARTICIPANT_SECRET_KEY, (err, payload) => {
       if (err) {
-        return res.status(403).send("Invalid token");
+        console.error("❌ JWT Verify Error:", err.message);
+        return res.status(403).json({
+          message: "Invalid or expired token"
+        });
       }
+
       req.participantPayload = payload;
       next();
     });
   } catch (err) {
-    return res.status(500).send("Server error");
+    console.error("🔥 JWT Middleware Error:", err.message);
+    return res.status(500).json({
+      message: "Server error"
+    });
   }
 };
 
-
 /* ================= PARTICIPANT ROUTES ================= */
 
-// Participant Registration
-participantRouter.post(
-  "/addParticipant",
-  addParticipantController
-);
+// ✅ Registration
+participantRouter.post("/addParticipant", addParticipantController);
 
+// ✅ Login
+participantRouter.post("/loginParticipant", loginParticipantController);
 
-// Participant Login
-participantRouter.post(
-  "/loginParticipant",
-  loginParticipantController
-);
+// ✅ OTP Verify
+participantRouter.post("/verify-otp", verifyParticipantOTPController);
 
-// Register for Tournament (Protected)
+// ✅ Register Tournament (Protected)
 participantRouter.post(
   "/registerTournament",
   authenticateParticipantJWT,
   registerTournamentController
 );
 
-// View Participant Registered Tournaments (Protected)
+// ✅ Get All Available Tournaments
 participantRouter.get(
-  "/participantTournamentList",
+  "/availableTournaments",
+  authenticateParticipantJWT,
+  participantTournamentListController
+);
+
+// ✅ Get My Registered Tournaments
+participantRouter.get(
+  "/myTournaments",
   authenticateParticipantJWT,
   participantRegistrationListController
 );

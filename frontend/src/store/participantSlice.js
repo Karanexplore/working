@@ -4,54 +4,189 @@ import jscookie from "js-cookie";
 import { requestedParticipantURL } from "../utils.js";
 
 const initialState = {
-  loggedInEmail: "",
-  tournamentArray: [],
+  loggedInEmail: jscookie.get("participantEmail") || "",
+  tournamentArray: [],              // Explore Events
+  registeredTournamentArray: [],    // My Registrations
   status: "",
   message: ""
 };
 
-/* ===== REGISTER ===== */
+/* ================= COMMON NO-CACHE HEADERS ================= */
+const getNoCacheHeaders = (token) => ({
+  Authorization: `Bearer ${token}`,
+  "Cache-Control": "no-cache, no-store, must-revalidate",
+  Pragma: "no-cache",
+  Expires: "0"
+});
+
+/* ================= PARTICIPANT REGISTRATION ================= */
 export const participantRegistrationThunk = createAsyncThunk(
   "participant/register",
-  async (data) => {
-    const res = await axios.post(
-      requestedParticipantURL + "/addParticipant",
-      data
-    );
-    return res.data;
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await axios.post(
+        requestedParticipantURL + "/addParticipant",
+        data
+      );
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Registration failed"
+      );
+    }
   }
 );
 
-/* ===== LOGIN ===== */
+/* ================= PARTICIPANT LOGIN ================= */
 export const participantLoginThunk = createAsyncThunk(
   "participant/login",
-  async (data) => {
-    const res = await axios.post(
-      requestedParticipantURL + "/loginParticipant",
-      data
-    );
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await axios.post(
+        requestedParticipantURL + "/loginParticipant",
+        data
+      );
 
-    jscookie.set("participantTokenData", res.data.participantToken);
-    jscookie.set("participantEmail", res.data.email);
+      // ✅ safe token extraction
+      const token =
+        res.data.participantToken ||
+        res.data.token ||
+        res.data.jwtToken ||
+        "";
 
-    return res.data;
+      const email =
+        res.data.email ||
+        res.data.participantEmail ||
+        data.email ||
+        "";
+
+      if (!token) {
+        return rejectWithValue("Token not received from server");
+      }
+
+      // ✅ clean old role cookies
+      jscookie.remove("organizerEmail");
+      jscookie.remove("organizerTokenData");
+      jscookie.remove("adminEmail");
+      jscookie.remove("adminTokenData");
+
+      jscookie.set("participantTokenData", token, { expires: 1 });
+      jscookie.set("participantEmail", email, { expires: 1 });
+
+      return {
+        ...res.data,
+        email,
+        participantToken: token
+      };
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Login failed"
+      );
+    }
   }
 );
 
-/* ===== TOURNAMENT LIST ===== */
+/* ================= ALL AVAILABLE TOURNAMENTS ================= */
 export const participantTournamentListThunk = createAsyncThunk(
   "participant/list",
-  async () => {
-    const token = jscookie.get("participantTokenData");
-    const res = await axios.get(
-      requestedParticipantURL + "/participantTournamentList",
-      {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = jscookie.get("participantTokenData");
+
+      if (!token) {
+        return rejectWithValue("Participant token missing. Please login again.");
       }
-    );
-    return res.data;
+
+      const res = await axios.get(
+        requestedParticipantURL + `/availableTournaments?t=${Date.now()}`,
+        {
+          headers: getNoCacheHeaders(token)
+        }
+      );
+
+      return res.data; // expected: { tournaments: [] }
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to fetch tournaments"
+      );
+    }
+  }
+);
+
+/* ================= MY REGISTERED TOURNAMENTS ================= */
+export const participantMyRegistrationsThunk = createAsyncThunk(
+  "participant/myRegistrations",
+  async (_, { rejectWithValue }) => {
+    try {
+      const token = jscookie.get("participantTokenData");
+
+      if (!token) {
+        return rejectWithValue("Participant token missing. Please login again.");
+      }
+
+      const res = await axios.get(
+        requestedParticipantURL + `/myTournaments?t=${Date.now()}`,
+        {
+          headers: getNoCacheHeaders(token)
+        }
+      );
+
+      return res.data; // expected: { tournaments: [] }
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Failed to fetch registrations"
+      );
+    }
+  }
+);
+
+/* ================= REGISTER TOURNAMENT ================= */
+export const participantRegisterTournamentThunk = createAsyncThunk(
+  "participant/registerTournament",
+  async (tournamentId, { rejectWithValue, dispatch }) => {
+    try {
+      const token = jscookie.get("participantTokenData");
+
+      if (!token) {
+        return rejectWithValue("Participant token missing. Please login again.");
+      }
+
+      const res = await axios.post(
+        requestedParticipantURL + "/registerTournament",
+        { tournamentId: String(tournamentId) },
+        {
+          headers: getNoCacheHeaders(token)
+        }
+      );
+
+      // ✅ after register, refresh both lists
+      dispatch(participantTournamentListThunk());
+      dispatch(participantMyRegistrationsThunk());
+
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "Registration failed"
+      );
+    }
+  }
+);
+
+/* ================= VERIFY OTP ================= */
+export const verifyParticipantOtpThunk = createAsyncThunk(
+  "participant/verifyOtp",
+  async (data, { rejectWithValue }) => {
+    try {
+      const res = await axios.post(
+        requestedParticipantURL + "/verify-otp",
+        data
+      );
+      return res.data;
+    } catch (err) {
+      return rejectWithValue(
+        err.response?.data?.message || "OTP verification failed"
+      );
+    }
   }
 );
 
@@ -61,214 +196,86 @@ const participantSlice = createSlice({
   reducers: {
     resetMessage: (state) => {
       state.message = "";
+    },
+    logoutParticipant: (state) => {
+      state.loggedInEmail = "";
+      state.tournamentArray = [];
+      state.registeredTournamentArray = [];
+      state.status = "";
+      state.message = "";
+
+      jscookie.remove("participantTokenData");
+      jscookie.remove("participantEmail");
     }
   },
   extraReducers: (builder) => {
     builder
+
+      /* ===== REGISTER ===== */
       .addCase(participantRegistrationThunk.fulfilled, (state, action) => {
         state.status = 200;
-        state.message = action.payload.message;
+        state.message = action.payload.message || "Registration successful";
       })
+      .addCase(participantRegistrationThunk.rejected, (state, action) => {
+        state.status = 400;
+        state.message = action.payload;
+      })
+
+      /* ===== LOGIN ===== */
       .addCase(participantLoginThunk.fulfilled, (state, action) => {
-        state.loggedInEmail = action.payload.email;
+        state.loggedInEmail = action.payload.email || "";
         state.status = 200;
-        state.message = "Login Successful";
+        state.message = action.payload.message || "Login Successful";
       })
+      .addCase(participantLoginThunk.rejected, (state, action) => {
+        state.status = 400;
+        state.message = action.payload;
+      })
+
+      /* ===== AVAILABLE TOURNAMENT LIST ===== */
       .addCase(participantTournamentListThunk.fulfilled, (state, action) => {
-        state.tournamentArray = action.payload.tournaments;
+        state.status = 200;
+        state.tournamentArray = action.payload.tournaments || [];
+      })
+      .addCase(participantTournamentListThunk.rejected, (state, action) => {
+        state.status = 403;
+        state.message = action.payload;
+        state.tournamentArray = [];
+      })
+
+      /* ===== MY REGISTERED TOURNAMENT LIST ===== */
+      .addCase(participantMyRegistrationsThunk.fulfilled, (state, action) => {
+        state.status = 200;
+        state.registeredTournamentArray = action.payload.tournaments || [];
+      })
+      .addCase(participantMyRegistrationsThunk.rejected, (state, action) => {
+        state.status = 403;
+        state.message = action.payload;
+        state.registeredTournamentArray = [];
+      })
+
+      /* ===== REGISTER TOURNAMENT ===== */
+      .addCase(participantRegisterTournamentThunk.fulfilled, (state, action) => {
+        state.status = 200;
+        state.message =
+          action.payload.message || "Tournament registered successfully";
+      })
+      .addCase(participantRegisterTournamentThunk.rejected, (state, action) => {
+        state.status = 400;
+        state.message = action.payload;
+      })
+
+      /* ===== VERIFY OTP ===== */
+      .addCase(verifyParticipantOtpThunk.fulfilled, (state, action) => {
+        state.status = 200;
+        state.message = action.payload.message || "OTP verified successfully";
+      })
+      .addCase(verifyParticipantOtpThunk.rejected, (state, action) => {
+        state.status = 400;
+        state.message = action.payload;
       });
   }
 });
 
-export const { resetMessage } = participantSlice.actions;
+export const { resetMessage, logoutParticipant } = participantSlice.actions;
 export default participantSlice.reducer;
-
-
-
-
-
-
-
-
-
-// import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-// import axios from "axios";
-// import jscookie from "js-cookie";
-// import { requestedParticipantURL } from "../utils.js";
-
-// const participantTokenData = jscookie.get("participantTokenData");
-
-// const initialState = {
-//     loggedInEmail: '',
-//     participantObj: {},
-//     participantArray: [],
-//     tournamentArray: [],
-//     status: '',
-//     message: ''
-// };
-
-// /* ================= PARTICIPANT TOURNAMENT LIST ================= */
-// const participantTournamentListThunk = createAsyncThunk(
-//   'participantSlice/participantTournamentListThunk',
-//   async (obj) => {
-//     try {
-//       const token = jscookie.get("participantTokenData");
-
-//       const result = await axios.post(
-//         requestedParticipantURL + '/participantTournamentList',
-//         obj,
-//         {
-//           headers: {
-//             Authorization: `Bearer ${token}`
-//           }
-//         }
-//       );
-
-//       return result.data;
-//     } catch (error) {
-//       console.log("Error in participantTournamentListThunk :", error);
-//       throw error;
-//     }
-//   }
-// );
-
-
-// /* ================= PARTICIPANT LOGIN ================= */
-// const participantLoginThunk = createAsyncThunk(
-//   'participantSlice/participantLoginThunk',
-//   async (participantObj) => {
-//     try {
-//       const result = await axios.post(
-//         requestedParticipantURL + '/loginParticipant',
-//         participantObj
-//       );
-
-//       // cookies yahin set karo
-//       jscookie.set(
-//         "participantTokenData",
-//         result.data.participantToken,
-//         { expires: 1 }
-//       );
-//       jscookie.set(
-//         "participantEmail",
-//         result.data._id,
-//         { expires: 1 }
-//       );
-
-//       // ⚠️ IMPORTANT: sirf data return karo
-//       return result.data;
-
-//     } catch (error) {
-//       console.log("Error in participantLoginThunk :", error);
-//       throw error;
-//     }
-//   }
-// );
-
-// /* ================= PARTICIPANT REGISTRATION ================= */
-// const participantRegistrationThunk = createAsyncThunk(
-//   'participantSlice/participantRegistrationThunk',
-//   async (participantObj) => {
-//     try {
-//       const result = await axios.post(
-//         requestedParticipantURL + '/addParticipant',
-//         participantObj
-//       );
-
-//       // ⚠️ IMPORTANT: sirf data return karo
-//       return result.data;
-
-//     } catch (error) {
-//       console.log("Error in participantRegistrationThunk:", error);
-//       throw error;
-//     }
-//   }
-// );
-
-// /* ================= REGISTER TOURNAMENT ================= */
-// const registerTournamentThunk = createAsyncThunk(
-//     'participantSlice/registerTournamentThunk',
-//     async (tournamentObj) => {
-//         try {
-//             const result = await axios.post(
-//                 requestedParticipantURL + '/registerTournament',
-//                 tournamentObj
-//             );
-//             return result;
-//         } catch (error) {
-//             console.log("Error in registerTournamentThunk : ", error);
-//         }
-//     }
-// );
-
-// const participantSlice = createSlice({
-//     name: "participantSlice",
-//     initialState,
-//     reducers: {
-//         resetMessage: (state, action) => {
-//             state.message = action.payload;
-//         }
-//     },
-//     extraReducers: (builder) => {
-
-//         /* ===== REGISTRATION ===== */
-//         builder
-//             .addCase(participantRegistrationThunk.pending, (state) => {})
-
-//            .addCase(participantRegistrationThunk.fulfilled, (state, action) => {
-//            state.status = 200;
-//            state.message = action.payload.message;
-//            })
-
-//             .addCase(participantRegistrationThunk.rejected, (state) => {});
-
-//         /* ===== LOGIN ===== */
-//         builder
-//             .addCase(participantLoginThunk.pending, (state) => {})
-//             .addCase(participantLoginThunk.fulfilled, (state, action) => {
-//              state.status = 200;
-//              state.loggedInEmail = action.payload._id;
-//               state.message = "Login Successful";
-//             })
-
-//             .addCase(participantLoginThunk.rejected, (state) => {});
-
-//         /* ===== REGISTER TOURNAMENT ===== */
-//         builder
-//             .addCase(registerTournamentThunk.pending, (state) => {})
-//             .addCase(registerTournamentThunk.fulfilled, (state, action) => {
-//                 state.status = action.payload?.status;
-//                 if (state.status === 200) {
-//                     state.message = "Tournament Registered Successfully";
-//                 } else {
-//                     state.message = "Error while Tournament Registration";
-//                 }
-//             })
-//             .addCase(registerTournamentThunk.rejected, (state) => {});
-
-//         /* ===== TOURNAMENT LIST ===== */
-//         builder
-//             .addCase(participantTournamentListThunk.pending, (state) => {})
-//             .addCase(participantTournamentListThunk.fulfilled, (state, action) => {
-//                 if (action.payload === undefined) {
-//                     state.status = 500;
-//                 }
-//                 if (action.payload?.status === 200) {
-//                     state.tournamentArray =
-//                         action.payload.data.tournamentList;
-//                     state.status = action.payload.status;
-//                 }
-//             })
-//             .addCase(participantTournamentListThunk.rejected, (state) => {});
-//     }
-// });
-
-// export {
-//     participantRegistrationThunk,
-//     participantLoginThunk,
-//     registerTournamentThunk,
-//     participantTournamentListThunk
-// };
-
-// export const { resetMessage } = participantSlice.actions;
-// export default participantSlice.reducer;

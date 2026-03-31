@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import cors from "cors";
 import mongoose from "mongoose";
 import cookieParser from "cookie-parser";
-import expressFileUpload from "express-fileupload";
+import helmet from "helmet";
 
 // Routers
 import adminRouter from "./router/adminRouter.js";
@@ -21,45 +21,47 @@ dotenv.config();
 
 const app = express();
 
-/* ================= BASIC MIDDLEWARE (TOP PRIORITY) ================= */
-app.use(cors());
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
+/* ================= SECURITY ================= */
+app.use(helmet());
 
-/* ================= FILE UPLOAD ================= */
+/* ================= CORS ================= */
 app.use(
-  expressFileUpload({
-    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-    createParentPath: true,
+  cors({
+    origin: "http://localhost:3000",
+    credentials: true
   })
 );
 
-/* ================= STATIC FILES ================= */
+/* ================= BODY PARSER ================= */
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+/* ================= COOKIE ================= */
+app.use(cookieParser());
+
+/* ================= STATIC ================= */
 app.use("/public", express.static("public"));
 
-/* ================= DATABASE CONNECTION ================= */
-mongoose
-  .connect(url, {
-    serverSelectionTimeoutMS: 1200000,
-    maxPoolSize: 10,
-  })
-  .then(() => {
-    console.log("MongoDB connected successfully");
-  })
-  .catch((error) => {
-    console.log("MongoDB connection error:", error.message);
-  });
+/* ================= HEALTH CHECK ================= */
+app.get("/", (req, res) => {
+  res.send("🚀 Backend Running Successfully");
+});
 
-/* ================= DEFAULT ADMIN SETUP ================= */
+/* ================= DATABASE ================= */
+mongoose
+  .connect(url)
+  .then(() => console.log("✅ MongoDB connected successfully"))
+  .catch((error) =>
+    console.log("❌ MongoDB connection error:", error.message)
+  );
+
+/* ================= ADMIN INIT ================= */
 (async () => {
-  console.log("Checking admin credentials...");
   try {
     await adminCredentials();
   } catch (error) {
     console.log("Admin credential error:", error.message);
   }
-  console.log("Admin credential check completed");
 })();
 
 /* ================= ROUTES ================= */
@@ -68,18 +70,20 @@ app.use("/organizer", organizerRouter);
 app.use("/participant", participantRouter);
 app.use("/tournament", tournamentRouter);
 
-/* ================= GLOBAL 404 HANDLER ================= */
+/* ================= 404 HANDLER ================= */
 app.use((req, res) => {
   res.status(404).json({ message: "API route not found" });
 });
 
-/* ================= SERVER START ================= */
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`Sports & eSports Arena backend running on port ${PORT}`);
+/* ================= GLOBAL ERROR ================= */
+app.use((err, req, res, next) => {
+  console.error("🔥 Global Error:", err.stack);
+  res.status(500).json({ message: err.message || "Something went wrong" });
 });
 
+/* ================= SERVER ================= */
+const PORT = process.env.PORT || 5000;
 
-
-
-
+app.listen(PORT, () => {
+  console.log(`🚀 Pulse Arena backend running on port ${PORT}`);
+});

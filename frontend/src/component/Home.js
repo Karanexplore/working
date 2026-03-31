@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import banner from "../images/banner.jpg";
 import { useDispatch } from "react-redux";
 import { resetMessage } from "../store/participantSlice.js";
-import { Link } from "react-router-dom"; // ✅ IMPORTANT
+import { Link } from "react-router-dom";
 
 function Home() {
   const dispatch = useDispatch();
@@ -16,71 +16,80 @@ function Home() {
 
       {/* ===== HERO SECTION ===== */}
       <section className="hero-section">
-        <img src={banner} className="hero-banner" alt="Sports Arena Banner" />
+        <img src={banner} className="hero-banner" alt="PulseArena Banner" />
 
         <div className="hero-overlay">
-          <h1>Sports & eSports Arena</h1>
+          <h1>PulseArena</h1>
           <p>
-            Discover and join exciting tournaments. Compete. Win. Celebrate.
+            Sports • eSports • Cultural • Technical Events — All in One Platform
           </p>
         </div>
       </section>
 
       {/* ===== ABOUT SECTION ===== */}
-      {/* <section className="about-section"> */}
       <section id="about" className="about-section">
-
         <div className="container-inner">
-          <h2>About Our Platform</h2>
+          <h2>About PulseArena</h2>
           <p>
-            Sports & eSports Arena is a unified platform where participants
-            can explore upcoming tournaments and organizers can create and
-            manage competitive events. From traditional sports to modern
-            eSports, everything is available in one seamless ecosystem.
+            PulseArena is a unified event management platform designed for
+            colleges and institutions. Organizers can create sports tournaments,
+            eSports battles, cultural festivals, hackathons, and technical events.
+            Participants can easily explore, register, and track their events
+            in one seamless ecosystem.
           </p>
         </div>
       </section>
 
-      {/* ===== RELATED GAMES SECTION ===== */}
+      {/* ===== EVENT CATEGORIES SECTION ===== */}
       <section className="games-section">
-        <h2>Popular Games & Sports</h2>
+        <h2>Explore Event Categories</h2>
 
         <div className="games-grid">
 
           <div className="game-card">
-            <h3>Cricket</h3>
-            <p>Join local and national cricket tournaments.</p>
+            <h3>Sports</h3>
+            <p>Cricket, Football, Volleyball, Athletics & more.</p>
           </div>
 
           <div className="game-card">
-            <h3>Football</h3>
-            <p>Compete in exciting football leagues.</p>
+            <h3>eSports</h3>
+            <p>BGMI, Valorant, Free Fire, Call of Duty tournaments.</p>
           </div>
 
           <div className="game-card">
-            <h3>BGMI</h3>
-            <p>Battle royale tournaments with real rewards.</p>
+            <h3>Cultural Events</h3>
+            <p>Dance, Singing, Drama, Fashion Shows, Talent Hunts.</p>
           </div>
 
           <div className="game-card">
-            <h3>Valorant</h3>
-            <p>Professional eSports tournaments and scrims.</p>
+            <h3>Technical Events</h3>
+            <p>Hackathons, Coding Competitions, Robotics & Workshops.</p>
           </div>
 
         </div>
       </section>
 
-      {/* ===== CONTACT / CTA SECTION ===== */}
-      {/* <section className="contact-section"> */}
-      <section id="contact" className="contact-section">
+      {/* ===== WHY CHOOSE US ===== */}
+      <section className="about-section">
+        <div className="container-inner">
+          <h2>Why Choose PulseArena?</h2>
+          <ul style={{ textAlign: "left" }}>
+            <li>✔ Multi-domain event management</li>
+            <li>✔ Secure role-based authentication</li>
+            <li>✔ Real-time slot management</li>
+            <li>✔ Admin analytics dashboard</li>
+            <li>✔ Scalable MERN architecture</li>
+          </ul>
+        </div>
+      </section>
 
-        <h2>Ready to Compete?</h2>
+      {/* ===== CALL TO ACTION ===== */}
+      <section id="contact" className="contact-section">
+        <h2>Ready to Join the Pulse?</h2>
         <p>
-          Register today and start participating in the best tournaments
-          around you.
+          Register today and become part of the most dynamic event platform.
         </p>
 
-        {/* ✅ React Link instead of <a> (important fix) */}
         <Link to="/participantRegistration" className="cta-button">
           Get Started
         </Link>
@@ -91,47 +100,3 @@ function Home() {
 }
 
 export default Home;
-
-
-
-
-
-
-
-
-
-
-// import React, { useEffect } from 'react';
-// // import { createRoot } from 'react-dom/client';
-// import banner from '../images/banner.jpg';
-// import { useDispatch } from 'react-redux';
-// import { resetMessage } from '../store/participantSlice.js';
-
-// function Home() {
-//     const dispatch = useDispatch();
-
-//     useEffect(() => {
-//         dispatch(resetMessage(''));
-//     }, []);
-
-//     return (
-//         <div>
-//             <div id="home">
-//                 <img src={banner} id="bannerId" alt="Banner" />
-//             </div>
-
-//             <div id="homeBottom">
-//                 <h2>Welcome to Sports & eSports Arena</h2>
-//                 <p>
-//                     Discover, explore, and register for exciting sports and eSports
-//                     tournaments all in one place. This platform provides a simple
-//                     BookMyShow-style experience where participants can browse events,
-//                     check available slots, and register seamlessly, while organizers
-//                     can manage tournaments efficiently.
-//                 </p>
-//             </div>
-//         </div>
-//     );
-// }
-
-// export default Home;

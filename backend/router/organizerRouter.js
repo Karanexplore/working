@@ -1,14 +1,15 @@
 import express from "express";
+import jwt from "jsonwebtoken";
+import dotenv from "dotenv";
+import { upload } from "../config/cloudinary.js";
+
 import {
   addOrganizerController,
   loginOrganizerController,
-  organizerVerifyEmailController,
   organizerTournamentListController,
-  organizerCreateTournamentController
+  organizerCreateTournamentController,
+  verifyOrganizerOTPController
 } from "../controller/organizerController.js";
-
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
 
 dotenv.config();
 
@@ -17,39 +18,60 @@ const ORGANIZER_SECRET_KEY = process.env.ORGANIZER_SECRET;
 
 /* ================= JWT AUTH ================= */
 const authenticateOrganizerJWT = (req, res, next) => {
-  const token = req.query.organizerTokenData;
+  try {
+    const authHeader = req.headers.authorization;
 
-  if (!token) {
-    return res.status(401).send("Organizer token missing");
-  }
-
-  jwt.verify(token, ORGANIZER_SECRET_KEY, (err, payload) => {
-    if (err) {
-      return res.status(403).send("Invalid token");
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Authorization header missing" });
     }
-    req.organizerPayload = payload;
-    next();
-  });
+
+    const token = authHeader.split(" ")[1];
+
+    if (!token || token === "undefined" || token === "null") {
+      return res.status(401).json({ message: "Organizer token missing" });
+    }
+
+    jwt.verify(token, ORGANIZER_SECRET_KEY, (err, payload) => {
+      if (err) {
+        return res.status(403).json({ message: "Invalid or expired organizer token" });
+      }
+
+      req.organizerPayload = payload;
+      next();
+    });
+  } catch (error) {
+    console.error("Organizer JWT Error:", error.message);
+    return res.status(500).json({ message: "Server error" });
+  }
 };
 
 /* ================= ROUTES ================= */
 
-// ✅ THIS ROUTE MUST EXIST
-organizerRouter.post("/addOrganizer", addOrganizerController);
+// Register
+organizerRouter.post(
+  "/register",
+  upload.single("organizerLogo"),
+  addOrganizerController
+);
 
-organizerRouter.post("/loginOrganizer", loginOrganizerController);
+// Login
+organizerRouter.post("/login", loginOrganizerController);
 
-organizerRouter.post("/verifyEmail", organizerVerifyEmailController);
+// OTP Verify
+organizerRouter.post("/verify-otp", verifyOrganizerOTPController);
 
+// View Organizer Tournaments
 organizerRouter.get(
-  "/organizerTournamentList",
+  "/tournaments",
   authenticateOrganizerJWT,
   organizerTournamentListController
 );
 
+// Create Tournament
 organizerRouter.post(
   "/createTournament",
   authenticateOrganizerJWT,
+  upload.single("tournamentPoster"),
   organizerCreateTournamentController
 );
 

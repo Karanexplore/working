@@ -1,13 +1,11 @@
-import React, { useEffect } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { useNavigate } from 'react-router-dom';
-import { setNavShow } from '../store/commonSlice.js';
-import { participantTournamentListThunk } from '../store/participantSlice.js';
-import { tournamentImagePath } from '../utils.js';
+import React, { useEffect } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { useNavigate } from "react-router-dom";
+import { setNavShow } from "../store/commonSlice.js";
+import { participantMyRegistrationsThunk } from "../store/participantSlice.js";
 
 function ParticipantViewRegistration() {
-
-  const participantObj = useSelector(state => state.participant);
+  const participantObj = useSelector((state) => state.participant);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -22,83 +20,96 @@ function ParticipantViewRegistration() {
   useEffect(() => {
     if (participantObj.loggedInEmail) {
       dispatch(setNavShow("participant"));
-      dispatch(
-        participantTournamentListThunk({
-          email: participantObj.loggedInEmail
-        })
-      );
+      dispatch(participantMyRegistrationsThunk());
     }
   }, [dispatch, participantObj.loggedInEmail]);
 
   return (
-    <div>
-      <br />
-      <blockquote>
-        <h2>Welcome {participantObj.loggedInEmail}</h2>
-        <h3>{participantObj.message}</h3>
+    <div style={{ padding: "20px" }}>
+      <h2>PulseArena - My Registered Events</h2>
+      <h4>Welcome {participantObj.loggedInEmail}</h4>
 
-        {participantObj.tournamentArray?.length > 0 ? (
-          <div>
-            <h2>Your Tournament Registrations</h2>
-            <br />
+      <p style={{ color: participantObj.status === 200 ? "green" : "red" }}>
+        {participantObj.message}
+      </p>
 
-            <table border={1} cellPadding={5} cellSpacing={0}>
-              <thead>
-                <tr>
-                  <th>S.No</th>
-                  <th>Tournament ID</th>
-                  <th>Tournament Name</th>
-                  <th>Venue / Platform</th>
-                  <th>Game</th>
-                  <th>Slots</th>
-                  <th>Date</th>
-                  <th>Time</th>
-                  <th>Category</th>
-                  <th>Banner</th>
-                  <th>Organizer</th>
+      {participantObj.registeredTournamentArray?.length > 0 ? (
+        <table border={1} cellPadding={6} cellSpacing={0} width="100%">
+          <thead style={{ backgroundColor: "#111", color: "white" }}>
+            <tr>
+              <th>S.No</th>
+              <th>Event</th>
+              <th>Type</th>
+              <th>Category</th>
+              <th>Venue</th>
+              <th>Date</th>
+              <th>Time</th>
+              <th>Slots</th>
+              <th>Poster</th>
+              <th>Organizer</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {participantObj.registeredTournamentArray.map((obj, index) => {
+              const registeredCount = obj.registrations?.length || 0;
+
+              return (
+                <tr key={obj.tournamentId}>
+                  <td>{index + 1}</td>
+
+                  <td>
+                    <strong>{obj.tournamentName}</strong>
+                    <br />
+                    <small>{obj.description || "No description provided"}</small>
+                  </td>
+
+                  <td>
+                    <span
+                      style={{
+                        padding: "4px 8px",
+                        borderRadius: "5px",
+                        backgroundColor: "#6a0dad",
+                        color: "white",
+                        fontSize: "12px"
+                      }}
+                    >
+                      {obj.eventType || "sports"}
+                    </span>
+                  </td>
+
+                  <td>{obj.gameCategory}</td>
+                  <td>{obj.venue}</td>
+                  <td>{obj.tournamentDate}</td>
+                  <td>{obj.reportingTime}</td>
+
+                  <td>
+                    {registeredCount} / {obj.maxParticipants}
+                  </td>
+
+                  <td>
+                    <img
+                      src={obj.tournamentPoster}
+                      width="70"
+                      height="70"
+                      alt="event"
+                      style={{ borderRadius: "6px", objectFit: "cover" }}
+                    />
+                  </td>
+
+                  <td>
+                    <strong>{obj.organizerEmail}</strong>
+                    <br />
+                    <small>{obj.organizerContact}</small>
+                  </td>
                 </tr>
-              </thead>
-
-              <tbody>
-                {participantObj.tournamentArray.map((obj, index) => (
-                  <tr key={obj.tournamentId}>
-                    <td>{index + 1}</td>
-                    <td>{obj.tournamentId}</td>
-                    <td>{obj.tournamentName}</td>
-                    <td>{obj.venue}</td>
-                    <td>{obj.gameDetails}</td>
-                    <td>{obj.totalSlots}</td>
-                    <td>{obj.tournamentDate}</td>
-                    <td>{obj.tournamentTime}</td>
-                    <td>{obj.gameCategory}</td>
-                    <td>
-                      <img
-                        src={`${tournamentImagePath}/${obj.tournamentBanner}`}
-                        width="70"
-                        height="70"
-                        alt="tournament"
-                      />
-                    </td>
-                    <td>
-                      {obj.organizerName ? (
-                        <>
-                          {obj.organizerName}
-                          <br />
-                          ({obj.organizerContact})
-                        </>
-                      ) : (
-                        "Pending"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div>No registrations found</div>
-        )}
-      </blockquote>
+              );
+            })}
+          </tbody>
+        </table>
+      ) : (
+        <h3>No registered events yet</h3>
+      )}
     </div>
   );
 }

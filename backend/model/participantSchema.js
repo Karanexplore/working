@@ -37,6 +37,19 @@ const participantSchema = new mongoose.Schema(
       default: true
     },
 
+    emailVerified: {
+      type: Boolean,
+      default: false
+    },
+
+    otp: {
+      type: String
+    },
+
+    otpExpiry: {
+      type: Date
+    },
+
     registeredDate: {
       type: String,
       default: () => moment().format("DD/MM/YYYY")

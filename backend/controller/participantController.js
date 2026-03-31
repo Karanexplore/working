@@ -1,106 +1,16 @@
-// import uuid4 from "uuid4";
-// import bcrypt from "bcrypt";
-// import Participant from "../model/participantSchema.js";
-// import dotenv from "dotenv";
-// import jwt from "jsonwebtoken";
-
-// dotenv.config();
-// const PARTICIPANT_SECRET_KEY = process.env.PARTICIPANT_SECRET;
-
-// /* ================= PARTICIPANT REGISTRATION ================= */
-// export const addParticipantController = async (request, response) => {
-//   try {
-//     const { username, email, password, contact } = request.body;
-
-//     // ✅ validation
-//     if (!username || !email || !password || !contact) {
-//       return response.status(400).send({ message: "All fields are required" });
-//     }
-
-//     const alreadyExists = await Participant.findOne({ email });
-//     if (alreadyExists) {
-//       return response.status(409).send({ message: "Email already registered" });
-//     }
-
-//     const hashedPassword = await bcrypt.hash(password, 10);
-
-//     await Participant.create({
-//       participantId: uuid4(),
-//       username,
-//       email,
-//       password: hashedPassword,
-//       contact
-//     });
-
-//     response.status(200).send({
-//       message: "Participant registered successfully"
-//     });
-//   } catch (error) {
-//     console.log("Error in addParticipantController:", error);
-//     response.status(500).send({ message: "Internal Server Error" });
-//   }
-// };
-
-// /* ================= PARTICIPANT LOGIN ================= */
-// export const loginParticipantController = async (request, response) => {
-//   try {
-//     const { email, password } = request.body;
-
-//     if (!email || !password) {
-//       return response.status(400).send({ message: "Email & password required" });
-//     }
-
-//     const participantObj = await Participant.findOne({ email });
-
-//     if (!participantObj) {
-//       return response.status(401).send({ message: "Invalid credentials" });
-//     }
-
-//     const isPasswordMatch = await bcrypt.compare(
-//       password,
-//       participantObj.password
-//     );
-
-//     if (!isPasswordMatch) {
-//       return response.status(401).send({ message: "Invalid credentials" });
-//     }
-
-//     const payload = {
-//       email,
-//       role: "participant"
-//     };
-
-//     const token = jwt.sign(payload, PARTICIPANT_SECRET_KEY, {
-//       expiresIn: "365d"
-//     });
-
-//     response.status(200).send({
-//       email,
-//       participantToken: token
-//     });
-//   } catch (error) {
-//     console.log("Error in loginParticipantController:", error);
-//     response.status(500).send({ message: "Internal Server Error" });
-//   }
-// };
-
-
-
-
-
-
-
-
 import Participant from "../model/participantSchema.js";
+import Tournament from "../model/tournamentSchema.js";
+
 import uuid4 from "uuid4";
 import bcrypt from "bcrypt";
-import participantSchema from "../model/participantSchema.js";
 import dotenv from "dotenv";
 import jwt from "jsonwebtoken";
-import tournamentSchema from "../model/tournamentSchema.js";
-import organizerSchema from "../model/organizerSchema.js";
+
+import { generateOTP } from "../utility/otpGenerator.js";
+import { sendOTPEmail } from "../utility/mailer.js";
 
 dotenv.config();
+
 const PARTICIPANT_SECRET_KEY = process.env.PARTICIPANT_SECRET;
 
 /* ================= PARTICIPANT REGISTRATION ================= */
@@ -109,191 +19,313 @@ export const addParticipantController = async (req, res) => {
     const { username, email, password, contact } = req.body;
 
     if (!username || !email || !password || !contact) {
-      return res.status(400).json({ message: "All fields are required" });
+      return res.status(400).json({
+        message: "All fields are required"
+      });
     }
 
-    const existing = await Participant.findOne({ email });
-    if (existing) {
-      return res.status(409).json({ message: "Email already registered" });
+    const exists = await Participant.findOne({ email });
+
+    if (exists) {
+      return res.status(409).json({
+        message: "Email already registered"
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const otp = generateOTP();
 
     await Participant.create({
       participantId: uuid4(),
       username,
       email,
       password: hashedPassword,
-      contact
+      contact,
+      otp,
+      otpExpiry: Date.now() + 10 * 60 * 1000,
+      emailVerified: false
     });
 
-    res.status(200).json({
-      message: "Participant registered successfully"
-    });
+    try {
+      await sendOTPEmail(email, otp);
+    } catch (error) {
+      await Participant.deleteOne({ email });
 
+      return res.status(500).json({
+        message: "Failed to send OTP email. Try again."
+      });
+    }
+
+    return res.status(200).json({
+      message: "Participant registered. OTP sent to your email."
+    });
   } catch (error) {
-    console.log("Error in addParticipantController:", error);
-    res.status(500).json({ message: "Internal Server Error" });
+    console.error("❌ Participant Register Error:", error.message);
+
+    return res.status(500).json({
+      message: "Internal Server Error"
+    });
   }
 };
 
-
-
-// export const addParticipantController = async (request, response) => {
-//   try {
-//     const participantData = {
-//       participantId: uuid4(),
-//       username: request.body.username,
-//       email: request.body.email,
-//       password: await bcrypt.hash(request.body.password, 10),
-//       contact: request.body.contact
-//     };
-
-//     const result = await Participant.create(participantData);
-
-//     console.log("Participant registered:", result.email);
-
-//     response.status(200).send({
-//       message: "Participant registered successfully"
-//     });
-
-//   } catch (error) {
-//     console.log("Error in addParticipantController:", error);
-//     response.status(500).send({
-//       message: "Internal Server Error"
-//     });
-//   }
-// };
-
-
 /* ================= PARTICIPANT LOGIN ================= */
-
-   export const loginParticipantController = async (request, response) => {
+export const loginParticipantController = async (req, res) => {
   try {
-    const { email, password } = request.body;
+    const { email, password } = req.body;
 
     if (!email || !password) {
-      return response.status(400).json({ message: "Email or password missing" });
+      return res.status(400).json({
+        message: "Email or password missing"
+      });
     }
 
-    const participantObj = await participantSchema.findOne({ email });
+    const participantObj = await Participant.findOne({ email });
 
     if (!participantObj) {
-      return response.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({
+        message: "Invalid credentials"
+      });
     }
 
     const isMatch = await bcrypt.compare(password, participantObj.password);
 
     if (!isMatch) {
-      return response.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({
+        message: "Invalid credentials"
+      });
+    }
+
+    if (!participantObj.emailVerified) {
+      return res.status(400).json({
+        message: "Please verify your email before login"
+      });
+    }
+
+    // ✅ VERY IMPORTANT
+    if (!PARTICIPANT_SECRET_KEY) {
+      console.error("❌ PARTICIPANT_SECRET missing in .env");
+
+      return res.status(500).json({
+        message: "Server configuration error"
+      });
     }
 
     const token = jwt.sign(
       {
         email: participantObj.email,
-        role: "participant"
+        role: "participant",
+        participantId: participantObj.participantId
       },
-      process.env.PARTICIPANT_SECRET,
+      PARTICIPANT_SECRET_KEY,
       { expiresIn: "365d" }
     );
 
-    response.status(200).json({
+    return res.status(200).json({
+      message: "Login successful",
       email: participantObj.email,
       participantToken: token
     });
-
   } catch (error) {
-    console.log("Error in loginParticipantController:", error);
-    response.status(500).json({ message: "Internal Server Error" });
+    console.error("❌ Error in loginParticipantController:", error.message);
+
+    return res.status(500).json({
+      message: "Internal Server Error"
+    });
   }
 };
- 
 
+/* ================= VERIFY PARTICIPANT OTP ================= */
+export const verifyParticipantOTPController = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
 
+    if (!email || !otp) {
+      return res.status(400).json({
+        message: "Email and OTP are required"
+      });
+    }
+
+    const participant = await Participant.findOne({ email });
+
+    if (!participant) {
+      return res.status(400).json({
+        message: "Participant not found"
+      });
+    }
+
+    if (participant.emailVerified) {
+      return res.status(400).json({
+        message: "Email already verified"
+      });
+    }
+
+    if (!participant.otp || participant.otp.toString() !== otp.toString()) {
+      return res.status(400).json({
+        message: "Invalid OTP"
+      });
+    }
+
+    if (!participant.otpExpiry || participant.otpExpiry < Date.now()) {
+      return res.status(400).json({
+        message: "OTP Expired"
+      });
+    }
+
+    participant.emailVerified = true;
+    participant.otp = undefined;
+    participant.otpExpiry = undefined;
+
+    await participant.save();
+
+    return res.status(200).json({
+      message: "Email verified successfully"
+    });
+  } catch (error) {
+    console.error("❌ Verify Participant OTP Error:", error.message);
+
+    return res.status(500).json({
+      message: "Internal Server Error"
+    });
+  }
+};
 
 /* ================= REGISTER FOR TOURNAMENT ================= */
-export const registerTournamentController = async (request, response) => {
+export const registerTournamentController = async (req, res) => {
   try {
-    const { tournamentId } = request.body;
-    const participantEmail = request.participantPayload._id;
+    const { tournamentId } = req.body;
+    const participantEmail = req.participantPayload?.email;
 
-    const tournament = await tournamentSchema.findOne({ tournamentId });
+    if (!participantEmail) {
+      return res.status(401).json({
+        message: "Unauthorized participant"
+      });
+    }
 
-    // ❌ tournament not found
+    if (!tournamentId) {
+      return res.status(400).json({
+        message: "Tournament ID missing"
+      });
+    }
+
+    const tournament = await Tournament.findOne({ tournamentId });
+
     if (!tournament) {
-      return response.status(404).send("Tournament not found");
+      return res.status(404).json({
+        message: "Tournament not found"
+      });
     }
 
-    // ❌ registration closed
     if (!tournament.registrationOpen) {
-      return response.status(400).send("Registration closed");
+      return res.status(400).json({
+        message: "Registration closed"
+      });
     }
 
-    // ❌ already registered
-    const alreadyRegistered = tournament.registrations.find(
-      r => r.participantEmail === participantEmail
+    const alreadyRegistered = tournament.registrations?.some(
+      (r) => r.participantEmail === participantEmail
     );
 
     if (alreadyRegistered) {
-      return response.status(400).send("Already registered");
+      return res.status(400).json({
+        message: "Already registered"
+      });
     }
 
-    // ❌ slots full
     if (tournament.registrations.length >= tournament.maxParticipants) {
       tournament.registrationOpen = false;
       await tournament.save();
-      return response.status(400).send("Slots full");
+
+      return res.status(400).json({
+        message: "Slots full"
+      });
     }
 
-    // ✅ register participant
     tournament.registrations.push({
       registrationId: uuid4(),
       participantEmail
     });
 
-    // auto close registration if limit reached
     if (tournament.registrations.length >= tournament.maxParticipants) {
       tournament.registrationOpen = false;
     }
 
     await tournament.save();
 
-    response.status(200).send({
-      message: "Tournament registered successfully"
+    return res.status(200).json({
+      message: "Tournament registered successfully",
+      tournamentId
     });
-
   } catch (error) {
-    console.log("Error in registerTournamentController:", error);
-    response.status(500).send("Internal Server Error");
+    console.error("❌ Error in registerTournamentController:", error.message);
+
+    return res.status(500).json({
+      message: "Internal Server Error"
+    });
   }
 };
 
-
-/* ================= PARTICIPANT REGISTRATION LIST ================= */
-export const participantRegistrationListController = async (request, response) => {
+/* ================= PARTICIPANT MY REGISTERED TOURNAMENTS ================= */
+export const participantRegistrationListController = async (req, res) => {
   try {
-    const email = request.participantPayload._id;
+    const email = req.participantPayload?.email;
 
-    const tournaments = await tournamentSchema.find({
-      "registrations.participantEmail": email
-    }).lean();
-
-    for (let t of tournaments) {
-      const organizer = await organizerSchema.findOne({
-        organizerId: t.organizerId
+    if (!email) {
+      return res.status(401).json({
+        message: "Unauthorized participant"
       });
-
-      t.organizerName = organizer?.organizerName || "";
-      t.organizerContact = organizer?.contact || "";
     }
 
-    response.status(200).send({
-      _id: email,
+    const tournaments = await Tournament.find({
+      "registrations.participantEmail": email,
+      status: true
+    })
+      .sort({ _id: -1 })
+      .lean();
+
+    return res.status(200).json({
       tournaments
     });
-
   } catch (error) {
-    console.log("Error in participantRegistrationListController:", error);
-    response.status(500).send("Internal Server Error");
+    console.error(
+      "❌ Error in participantRegistrationListController:",
+      error.message
+    );
+
+    return res.status(500).json({
+      message: "Internal Server Error"
+    });
+  }
+};
+
+/* ================= AVAILABLE TOURNAMENT LIST ================= */
+export const participantTournamentListController = async (req, res) => {
+  try {
+    const participantEmail = req.participantPayload?.email;
+
+    if (!participantEmail) {
+      return res.status(401).json({
+        message: "Unauthorized participant"
+      });
+    }
+
+    const tournaments = await Tournament.find({
+      registrationOpen: true,
+      status: true
+    })
+      .sort({ _id: -1 })
+      .lean();
+
+    return res.status(200).json({
+      tournaments
+    });
+  } catch (error) {
+    console.error(
+      "❌ Error in participantTournamentListController:",
+      error.message
+    );
+
+    return res.status(500).json({
+      message: "Internal Server Error"
+    });
   }
 };
