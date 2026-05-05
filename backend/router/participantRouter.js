@@ -3,12 +3,14 @@ import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
 
 import {
-  addParticipantController,
+ addParticipantController,
   loginParticipantController,
   registerTournamentController,
   participantRegistrationListController,
   participantTournamentListController,
-  verifyParticipantOTPController
+  verifyParticipantOTPController,
+  getParticipantProfileController,       // 🔥 ADD
+  updateParticipantProfileController 
 } from "../controller/participantController.js";
 
 dotenv.config();
@@ -96,6 +98,19 @@ participantRouter.get(
   "/myTournaments",
   authenticateParticipantJWT,
   participantRegistrationListController
+);
+
+// Routes mein end mein add karo:
+participantRouter.get(
+  "/profile",
+  authenticateParticipantJWT,
+  getParticipantProfileController
+);
+
+participantRouter.put(
+  "/profile",
+  authenticateParticipantJWT,
+  updateParticipantProfileController
 );
 
 export default participantRouter;

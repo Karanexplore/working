@@ -8,7 +8,9 @@ import {
   loginOrganizerController,
   organizerTournamentListController,
   organizerCreateTournamentController,
-  verifyOrganizerOTPController
+  verifyOrganizerOTPController,
+  getOrganizerProfileController,        // 🔥 ADD
+  updateOrganizerProfileController 
 } from "../controller/organizerController.js";
 
 dotenv.config();
@@ -73,6 +75,19 @@ organizerRouter.post(
   authenticateOrganizerJWT,
   upload.single("tournamentPoster"),
   organizerCreateTournamentController
+);
+
+organizerRouter.get(
+  "/profile",
+  authenticateOrganizerJWT,
+  getOrganizerProfileController
+);
+
+organizerRouter.put(
+  "/profile",
+  authenticateOrganizerJWT,
+  upload.single("organizerLogo"),
+  updateOrganizerProfileController
 );
 
 export default organizerRouter;

@@ -1,7 +1,8 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { participantRegisterTournamentThunk } from "../../store/participantSlice.js";
+import { participantRegisterTournamentThunk, resetMessage } from "../../store/participantSlice.js";
+import BookTicketModal from "./BookTicketModal.js";
 import "./participantPages.css";
 
 function ParticipantEventDetails() {
@@ -10,6 +11,13 @@ function ParticipantEventDetails() {
   const dispatch = useDispatch();
   const participantObj = useSelector((state) => state.participant);
   const { id } = useParams();
+
+  const [showTicketModal, setShowTicketModal] = useState(false);
+
+  // Clear any stale message (e.g. "Login successful") when this page loads
+  useEffect(() => {
+    dispatch(resetMessage());
+  }, [dispatch]);
 
   const tournamentData = location.state?.tournamentData;
 
@@ -21,6 +29,7 @@ function ParticipantEventDetails() {
 
   const getImage = () => {
     return (
+      tournamentData?.tournamentPoster ||
       tournamentData?.image ||
       tournamentData?.poster ||
       tournamentData?.banner ||
@@ -59,17 +68,30 @@ function ParticipantEventDetails() {
           <p className="event-type">{tournamentData?.gameTitle || "Tournament"}</p>
 
           <div className="event-quick-info">
-            <span>📅 {formatDate(tournamentData?.tournamentDate)}</span>
-            <span>📍 {tournamentData?.venue || "Venue Not Available"}</span>
-            <span>👥 Slots: {tournamentData?.maxParticipants || "Not Mentioned"}</span>
+            <span>📅 &nbsp;{formatDate(tournamentData?.tournamentDate)}</span>
+            <span>📍 &nbsp;{tournamentData?.venue || "Venue Not Available"}</span>
+            <span>👥 &nbsp;Slots: {tournamentData?.maxParticipants || "Not Mentioned"}</span>
           </div>
 
-          <button className="register-btn" onClick={handleRegister}>
-            Register Now
-          </button>
+          <div className="event-action-row">
+            <button className="register-btn" onClick={handleRegister}>
+              Register Now
+            </button>
+
+            <button
+              className="book-ticket-btn"
+              onClick={() => setShowTicketModal(true)}
+            >
+              🎟️ Book Tickets
+            </button>
+          </div>
 
           {participantObj?.message && (
-            <p style={{ marginTop: "14px", color: "#fca5a5" }}>
+            <p style={{
+              marginTop: "14px",
+              color: participantObj.status === 200 ? "#86efac" : "#fca5a5",
+              fontWeight: 600
+            }}>
               {participantObj.message}
             </p>
           )}
@@ -104,6 +126,16 @@ function ParticipantEventDetails() {
         </div>
 
         <div className="details-card">
+          <h2>Audience Info</h2>
+          <p>
+            Can't compete but want to watch the action live? Book audience
+            tickets using the <strong>Book Tickets</strong> button above. Arrive
+            early to get the best seats. Tickets are non-transferable and valid
+            only for the event date.
+          </p>
+        </div>
+
+        <div className="details-card">
           <h2>Rules & Guidelines</h2>
           <p>
             {tournamentData?.rules ||
@@ -111,8 +143,18 @@ function ParticipantEventDetails() {
           </p>
         </div>
       </div>
+
+      {showTicketModal && (
+        <BookTicketModal
+          tournamentId={tournamentData?.tournamentId || id}
+          tournamentName={tournamentData?.tournamentName}
+          onClose={() => setShowTicketModal(false)}
+        />
+      )}
     </div>
   );
 }
 
 export default ParticipantEventDetails;
+
+

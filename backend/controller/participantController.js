@@ -329,3 +329,79 @@ export const participantTournamentListController = async (req, res) => {
     });
   }
 };
+
+
+
+/* ================= GET PARTICIPANT PROFILE ================= */
+export const getParticipantProfileController = async (req, res) => {
+  try {
+    const email = req.participantPayload?.email;
+
+    if (!email) {
+      return res.status(401).json({ message: "Unauthorized participant" });
+    }
+
+    const participant = await Participant.findOne(
+      { email },
+      { password: 0, otp: 0, otpExpiry: 0 }
+    );
+
+    if (!participant) {
+      return res.status(404).json({ message: "Participant not found" });
+    }
+
+    return res.status(200).json({ participant });
+
+  } catch (error) {
+    console.error("❌ Get Profile Error:", error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};
+
+/* ================= UPDATE PARTICIPANT PROFILE ================= */
+export const updateParticipantProfileController = async (req, res) => {
+  try {
+    const email = req.participantPayload?.email;
+
+    if (!email) {
+      return res.status(401).json({ message: "Unauthorized participant" });
+    }
+
+    const { username, contact } = req.body;
+
+    const updateData = {};
+
+    if (username) {
+      if (username.trim().length < 2) {
+        return res.status(400).json({ message: "Username too short" });
+      }
+      updateData.username = username.trim();
+    }
+
+    if (contact) {
+      if (!/^[0-9]{10}$/.test(contact)) {
+        return res.status(400).json({ message: "Enter valid 10 digit contact number" });
+      }
+      updateData.contact = contact;
+    }
+
+    const updated = await Participant.findOneAndUpdate(
+      { email },
+      { $set: updateData },
+      { new: true, select: "-password -otp -otpExpiry" }
+    );
+
+    if (!updated) {
+      return res.status(404).json({ message: "Participant not found" });
+    }
+
+    return res.status(200).json({
+      message: "Profile updated successfully",
+      participant: updated
+    });
+
+  } catch (error) {
+    console.error("❌ Update Profile Error:", error.message);
+    return res.status(500).json({ message: "Internal Server Error" });
+  }
+};

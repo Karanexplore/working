@@ -8,7 +8,8 @@ import {
   approveOrganizerController,
   rejectOrganizerController,
   suspendOrganizerController,
-  adminTournamentListController
+  adminTournamentListController,
+  getAdminProfileController        // 🔥 ADD
 } from "../controller/adminController.js";
 
 dotenv.config();
@@ -99,4 +100,13 @@ adminRouter.put(
   suspendOrganizerController
 );
 
+// 🔥 Admin Profile
+adminRouter.get(
+  "/profile",
+  authenticateAdminJWT,
+  getAdminProfileController
+);
+
 export default adminRouter;
+
+

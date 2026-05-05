@@ -33,9 +33,12 @@ const organizerSchema = new mongoose.Schema(
     },
 
     gameCategory: {
-      type: String,
-      required: true
-    },
+  type: String,
+  required: true,
+  trim: true,
+  minlength: 2,
+  maxlength: 50
+},
 
     description: {
       type: String,

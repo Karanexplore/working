@@ -39,65 +39,41 @@ const tournamentSchema = new mongoose.Schema({
     lowercase: true
   },
 
-  // ✅ Added for better display / admin panel support
   organizerName: {
     type: String,
     default: "",
     trim: true
   },
 
-  // tournamentName: {
-  //   type: String,
-  //   required: true,
-  //   trim: true
-  // },
-
   tournamentName: {
-  type: String,
-  required: true,
-  trim: true,
-  minlength: 3,
-  maxlength: 50,
-  match: [/^[a-zA-Z0-9\s]+$/, "Invalid tournament name"]
-},
-
-  // organizerContact: {
-  //   type: String,
-  //   required: true,
-  //   trim: true
-  // },
+    type: String,
+    required: true,
+    trim: true,
+    minlength: 3,
+    maxlength: 50,
+    match: [/^[a-zA-Z0-9\s]+$/, "Invalid tournament name"]
+  },
 
   organizerContact: {
-  type: String,
-  required: true,
-  match: [/^[0-9]{10}$/, "Enter valid 10 digit number"]
-},
-
-  // venue: {
-  //   type: String,
-  //   required: true,
-  //   trim: true
-  // },
+    type: String,
+    required: true,
+    match: [/^[0-9]{10}$/, "Enter valid 10 digit number"]
+  },
 
   venue: {
-  type: String,
-  required: true,
-  trim: true,
-  minlength: 3,
-  match: [/^[a-zA-Z0-9\s,.-]+$/, "Invalid venue"]
-},
+    type: String,
+    required: true,
+    trim: true,
+    minlength: 3,
+    match: [/^[a-zA-Z0-9\s,.-]+$/, "Invalid venue"]
+  },
 
-  // gameTitle: {
-  //   type: String,
-  //   required: true,
-  //   trim: true
-  // },
-
+  // 🔥 FIXED: enum hata diya — koi bhi game/sport allow hoga
   gameTitle: {
-  type: String,
-  required: true,
-  enum: ["Cricket", "Football", "BGMI", "Valorant", "CSGO"]
-},
+    type: String,
+    required: true,
+    trim: true
+  },
 
   eventType: {
     type: String,
@@ -106,19 +82,13 @@ const tournamentSchema = new mongoose.Schema({
     trim: true
   },
 
-  // description: {
-  //   type: String,
-  //   default: "",
-  //   trim: true
-  // },
-
   description: {
-  type: String,
-  required: true,
-  minlength: 10,
-  maxlength: 300,
-  trim: true
-},
+    type: String,
+    required: true,
+    minlength: 10,
+    maxlength: 300,
+    trim: true
+  },
 
   maxParticipants: {
     type: Number,
@@ -126,17 +96,11 @@ const tournamentSchema = new mongoose.Schema({
     min: [1, "Max participants must be at least 1"]
   },
 
-  // tournamentDate: {
-  //   type: String,
-  //   required: true,
-  //   trim: true
-  // },
-
   tournamentDate: {
-  type: String,
-  required: true,
-  match: [/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"]
-},
+    type: String,
+    required: true,
+    match: [/^\d{4}-\d{2}-\d{2}$/, "Invalid date format"]
+  },
 
   reportingTime: {
     type: String,
@@ -144,17 +108,12 @@ const tournamentSchema = new mongoose.Schema({
     trim: true
   },
 
-  // gameCategory: {
-  //   type: String,
-  //   required: true,
-  //   trim: true
-  // },
-
+  // 🔥 FIXED: enum hata diya — koi bhi category allow hogi
   gameCategory: {
-  type: String,
-  required: true,
-  enum: ["Outdoor", "Indoor", "Esports"]
-},
+    type: String,
+    required: true,
+    trim: true
+  },
 
   tournamentPoster: {
     type: String,
@@ -184,8 +143,6 @@ const tournamentSchema = new mongoose.Schema({
     trim: true
   },
 
-  // 🔥 IMPORTANT:
-  // false = hidden from participants until admin/approval logic allows visibility
   status: {
     type: Boolean,
     default: false
@@ -207,7 +164,6 @@ tournamentSchema.set("toJSON", { virtuals: true });
 tournamentSchema.set("toObject", { virtuals: true });
 
 export default mongoose.model("Tournament", tournamentSchema, "tournaments");
-
 
 /* ================= AUTO STATUS UPDATE ================= */
 tournamentSchema.methods.updateEventStatus = function () {
